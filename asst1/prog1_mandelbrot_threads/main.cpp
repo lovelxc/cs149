@@ -69,10 +69,11 @@ int main(int argc, char **argv) {
     int opt;
     static struct option long_options[] = {{"threads", 1, 0, 't'},
                                            {"view", 1, 0, 'v'},
+                                           {"iterations", 1, 0, 'i'},
                                            {"help", 0, 0, '?'},
                                            {0, 0, 0, 0}};
-
-    while ((opt = getopt_long(argc, argv, "t:v:?", long_options, NULL)) !=
+    int iterations = 1;
+    while ((opt = getopt_long(argc, argv, "t:v:i:?", long_options, NULL)) !=
            EOF) {
 
         switch (opt) {
@@ -94,6 +95,14 @@ int main(int argc, char **argv) {
             }
             break;
         }
+        case 'i': {
+            iterations = atoi(optarg);
+            if (iterations <= 0) {
+                fprintf(stderr, "Invalid number of iterations\n");
+                return 1;
+            }
+            break;
+        }
         case '?':
         default:
             usage(argv[0]);
@@ -111,7 +120,7 @@ int main(int argc, char **argv) {
     //
 
     double minSerial = 1e30;
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < iterations; ++i) {
         memset(output_serial, 0, width * height * sizeof(int));
         double startTime = CycleTimer::currentSeconds();
         mandelbrotSerial(x0, y0, x1, y1, width, height, 0, height,
@@ -129,7 +138,7 @@ int main(int argc, char **argv) {
     //
 
     double minThread = 1e30;
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < iterations; ++i) {
         memset(output_thread, 0, width * height * sizeof(int));
         double startTime = CycleTimer::currentSeconds();
         mandelbrotThread(numThreads, x0, y0, x1, y1, width, height,

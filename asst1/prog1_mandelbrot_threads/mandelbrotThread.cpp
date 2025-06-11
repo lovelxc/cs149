@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <stdio.h>
 #include <thread>
 
@@ -29,17 +30,36 @@ void workerThreadStart(WorkerArgs *const args) {
     // to compute a part of the output image.  For example, in a
     // program that uses two threads, thread 0 could compute the top
     // half of the image and thread 1 could compute the bottom half.
-
+    double t_startTime = CycleTimer::currentSeconds();
     printf("Hello world from thread %d\n", args->threadId);
+    // 一开始写的，观察mandel函数可以发现，每行的计算量其实是不一样的，起始行越大，计算时间越长
+    // 因此要将任务均分给三个线程，也就是切成条，而不是直接切成块
+    /*
     int max_rows = args->height / args->numThreads;
     int nums_rows = max_rows;
     if (args->threadId == args->numThreads - 1) {
         // Last thread takes the remaining rows
-        nums_rows = args->height - (args->numThreads - 1) * (args->height / args->numThreads);
+        nums_rows = args->height -
+                    (args->numThreads - 1) * (args->height / args->numThreads);
     }
     mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width,
                      args->height, args->threadId * max_rows, nums_rows,
                      args->maxIterations, args->output);
+    */
+    const unsigned int CHUNK_SIZE = 16; // 或 8、32 等，需要测试最优值
+    // 每次处理多行，减少函数调用开销
+    for (unsigned int cur_row = args->threadId * CHUNK_SIZE;
+         cur_row < args->height; cur_row += args->numThreads * CHUNK_SIZE) {
+        // 确保不会越界
+        int numRows = std::min(CHUNK_SIZE, args->height - cur_row);
+        mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width,
+                         args->height, cur_row, numRows, args->maxIterations,
+                         args->output);
+    }
+
+    double t_endTime = CycleTimer::currentSeconds();
+    printf("Thread %d: [%.3f] ms\n", args->threadId,
+           (t_endTime - t_startTime) * 1000);
 }
 
 //
